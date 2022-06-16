@@ -147,7 +147,7 @@ class Parser:  # pylint: disable=R0902
                 or tok.ttype is Comment
                 or tok.ttype.parent is Comment
             ):
-                char_index += len(token.value)
+                char_index += len(tok.value)
                 continue
             # combine dot separated identifiers
             if self._is_token_part_of_complex_identifier(token=tok, index=index):
