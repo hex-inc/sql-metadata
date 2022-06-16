@@ -8,7 +8,7 @@ from typing import Dict, List, Optional, Set, Tuple, Union
 
 import sqlparse
 from sqlparse.sql import Token
-from sqlparse.tokens import Name, Number, Whitespace
+from sqlparse.tokens import Name, Number, Whitespace, Comment
 
 from sql_metadata.generalizator import Generalizator
 from sql_metadata.keywords_lists import (
@@ -1008,14 +1008,17 @@ class Parser:  # pylint: disable=R0902
 
     def _get_sqlparse_tokens(self, parsed) -> None:
         """
-        Flattens the tokens and removes whitespace
+        Flattens the tokens and removes whitespace/comments
         """
         self.sqlparse_tokens = parsed[0].tokens
         sqlparse_tokens = self._flatten_sqlparse()
         self.non_empty_tokens = [
             token
             for token in sqlparse_tokens
-            if token.ttype is not Whitespace and token.ttype.parent is not Whitespace
+            if token.ttype is not Whitespace
+            and token.ttype.parent is not Whitespace
+            and token.ttype is not Comment
+            and token.ttype.parent is not Comment
         ]
         self.tokens_length = len(self.non_empty_tokens)
 
