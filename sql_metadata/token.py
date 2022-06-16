@@ -25,8 +25,7 @@ class SQLToken:  # pylint: disable=R0902, R0904
         index: int = -1,
         subquery_level: int = 0,
         last_keyword: str = None,
-        row: int = 0,
-        col: int = 0,
+        char_index: int = 0,
     ):
         self.position = index
         if tok is None:
@@ -52,8 +51,7 @@ class SQLToken:  # pylint: disable=R0902, R0904
             self.next_token = EmptyToken
             self.previous_token = EmptyToken
             self.subquery_level = subquery_level
-            self.row = row
-            self.col = col
+            self.char_index = char_index
         self.token_type = None
 
         self._set_default_parenthesis_status()
@@ -77,8 +75,7 @@ class SQLToken:  # pylint: disable=R0902, R0904
         self.subquery_level = 0
         self.next_token = None
         self.previous_token = None
-        self.row = 0
-        self.col = 0
+        self.char_index = 0
 
     def _set_default_parenthesis_status(self):
         self.is_in_nested_function = False

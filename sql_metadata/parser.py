@@ -138,8 +138,7 @@ class Parser:  # pylint: disable=R0902
         all_tokens = self._get_sqlparse_tokens(parsed)
         last_keyword = None
         combine_flag = False
-        row = 0
-        col = 0
+        char_index = 0
         index = 0
         for tok in all_tokens:
             if (
@@ -148,12 +147,7 @@ class Parser:  # pylint: disable=R0902
                 or tok.ttype is Comment
                 or tok.ttype.parent is Comment
             ):
-                lines = tok.value.splitlines()
-                row += len(lines) - 1
-                if len(lines) > 1:
-                    col = len(lines[-1])
-                else:
-                    col += len(tok.value)
+                char_index += len(token.value)
                 continue
             # combine dot separated identifiers
             if self._is_token_part_of_complex_identifier(token=tok, index=index):
@@ -165,8 +159,7 @@ class Parser:  # pylint: disable=R0902
                 index=index,
                 subquery_level=self._subquery_level,
                 last_keyword=last_keyword,
-                row=row,
-                col=col,
+                char_index=char_index,
             )
             if combine_flag:
                 self._combine_qualified_names(index=index, token=token)
@@ -189,12 +182,7 @@ class Parser:  # pylint: disable=R0902
             token.is_in_nested_function = self._is_in_nested_function
             token.parenthesis_level = self._parenthesis_level
             tokens.append(token)
-            lines = token.raw_value.splitlines()
-            row += len(lines) - 1
-            if len(lines) > 1:
-                col = len(lines[-1])
-            else:
-                col += len(token.raw_value)
+            char_index += len(token.raw_value)
             index += 1
 
         self._tokens = tokens
