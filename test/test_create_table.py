@@ -164,3 +164,22 @@ def test_create_if_not_exists_simple_name():
     assert parser.query_type == QueryType.CREATE
     assert parser.tables == ["analytics_table"]
     assert parser.columns == ["version", "created_date"]
+
+def test_create_or_replace_table_simple():
+    qry = """
+    CREATE OR REPLACE TABLE analytics_table (code INTEGER NOT NULL)
+    """
+    parser = Parser(qry)
+    assert parser.query_type == QueryType.CREATE
+    assert parser.columns == ["code"]
+    assert parser.tables == ["analytics_table"]
+
+def test_create_or_replace_with_select():
+    qry = """
+    CREATE OR REPLACE TABLE mysuper_secret_schema.records AS
+    (SELECT t.id, t.name, e.name as energy FROM t JOIN e ON t.e_id = e.id)
+    """
+    parser = Parser(qry)
+    assert parser.query_type == QueryType.CREATE
+    assert parser.columns == ["t.id", "t.name", "e.name", "t.e_id", "e.id"]
+    assert parser.tables == ["mysuper_secret_schema.records", "t", "e"]

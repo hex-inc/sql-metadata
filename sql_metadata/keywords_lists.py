@@ -102,6 +102,7 @@ SUPPORTED_QUERY_TYPES = {
     "DELETE": QueryType.DELETE,
     "WITH": QueryType.SELECT,
     "CREATETABLE": QueryType.CREATE,
+    "CREATEORREPLACETABLE": QueryType.CREATE,
     "ALTERTABLE": QueryType.ALTER,
     "DROPTABLE": QueryType.DROP,
 }
