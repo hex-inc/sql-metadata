@@ -25,11 +25,13 @@ class SQLToken:  # pylint: disable=R0902, R0904
         index: int = -1,
         subquery_level: int = 0,
         last_keyword: str = None,
+        char_index: int = 0,
     ):
         self.position = index
         if tok is None:
             self._set_default_values()
         else:
+            self.raw_value = tok.value
             self.value = tok.value.strip("`").strip('"')
             self.is_keyword = tok.is_keyword or (
                 tok.ttype.parent is Name and tok.ttype is not Name
@@ -49,11 +51,13 @@ class SQLToken:  # pylint: disable=R0902, R0904
             self.next_token = EmptyToken
             self.previous_token = EmptyToken
             self.subquery_level = subquery_level
+            self.char_index = char_index
         self.token_type = None
 
         self._set_default_parenthesis_status()
 
     def _set_default_values(self):
+        self.raw_value = ""
         self.value = ""
         self.is_keyword = False
         self.is_name = False
@@ -71,6 +75,7 @@ class SQLToken:  # pylint: disable=R0902, R0904
         self.subquery_level = 0
         self.next_token = None
         self.previous_token = None
+        self.char_index = 0
 
     def _set_default_parenthesis_status(self):
         self.is_in_nested_function = False
