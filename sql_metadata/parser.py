@@ -137,31 +137,19 @@ class Parser:  # pylint: disable=R0902
         # handle empty queries (#12)
         if not parsed:
             return tokens
-        all_tokens = self._get_sqlparse_tokens(parsed)
+        self._get_sqlparse_tokens(parsed)
         last_keyword = None
         combine_flag = False
-        char_index = 0
-        index = 0
-        for tok in all_tokens:
-            if (
-                tok.ttype is Whitespace
-                or tok.ttype.parent is Whitespace
-                or tok.ttype is Comment
-                or tok.ttype.parent is Comment
-            ):
-                char_index += len(tok.value)
-                continue
+        for index, tok in enumerate(self.non_empty_tokens):
             # combine dot separated identifiers
             if self._is_token_part_of_complex_identifier(token=tok, index=index):
                 combine_flag = True
-                index += 1
                 continue
             token = SQLToken(
                 tok=tok,
                 index=index,
                 subquery_level=self._subquery_level,
                 last_keyword=last_keyword,
-                char_index=char_index,
             )
             if combine_flag:
                 self._combine_qualified_names(index=index, token=token)
@@ -186,8 +174,6 @@ class Parser:  # pylint: disable=R0902
             token.is_in_nested_function = self._is_in_nested_function
             token.parenthesis_level = self._parenthesis_level
             tokens.append(token)
-            char_index += len(token.raw_value)
-            index += 1
 
         self._tokens = tokens
         # since tokens are used in all methods required parsing (so w/o generalization)
@@ -1023,46 +1009,34 @@ class Parser:  # pylint: disable=R0902
         Combines names like <schema>.<table>.<column> or <table/sub_query>.<column>
         """
         value = token.value
-        raw_value = token.raw_value
         is_complex = True
         while is_complex:
-            value, raw_value, is_complex = self._combine_tokens(
-                index=index, value=value, raw_value=raw_value
-            )
+            value, is_complex = self._combine_tokens(index=index, value=value)
             index = index - 2
         token.value = value
-        token.raw_value = raw_value
 
-    def _combine_tokens(
-        self, index: int, value: str, raw_value: str
-    ) -> Tuple[str, str, bool]:
+    def _combine_tokens(self, index: int, value: str) -> Tuple[str, bool]:
         """
         Checks if complex identifier is longer and follows back until it's finished
         """
         if index > 1 and str(self.non_empty_tokens[index - 1]) == ".":
-            prev_raw_value = self.non_empty_tokens[index - 2].value
-            prev_value = prev_raw_value.strip("`").strip('"')
+            prev_value = self.non_empty_tokens[index - 2].value.strip("`").strip('"')
             value = f"{prev_value}.{value}"
-            raw_value = f"{prev_raw_value}.{raw_value}"
-            return value, raw_value, True
-        return value, raw_value, False
+            return value, True
+        return value, False
 
-    def _get_sqlparse_tokens(self, parsed):
+    def _get_sqlparse_tokens(self, parsed) -> None:
         """
         Flattens the tokens and removes whitespace/comments
         """
         self.sqlparse_tokens = parsed[0].tokens
-        sqlparse_tokens = list(self._flatten_sqlparse())
+        sqlparse_tokens = self._flatten_sqlparse()
         self.non_empty_tokens = [
             token
             for token in sqlparse_tokens
-            if token.ttype is not Whitespace
-            and token.ttype.parent is not Whitespace
-            and token.ttype is not Comment
-            and token.ttype.parent is not Comment
+            if token.ttype is not Whitespace and token.ttype.parent is not Whitespace
         ]
         self.tokens_length = len(self.non_empty_tokens)
-        return sqlparse_tokens
 
     def _flatten_sqlparse(self):
         for token in self.sqlparse_tokens:
