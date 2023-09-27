@@ -8,7 +8,7 @@ from typing import Dict, List, Optional, Set, Tuple, Union
 
 import sqlparse
 from sqlparse.sql import Token
-from sqlparse.tokens import Name, Number, Whitespace, Comment
+from sqlparse.tokens import Name, Number, Whitespace
 
 from sql_metadata.generalizator import Generalizator
 from sql_metadata.keywords_lists import (
