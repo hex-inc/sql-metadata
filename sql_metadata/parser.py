@@ -8,7 +8,7 @@ from typing import Dict, List, Optional, Set, Tuple, Union
 
 import sqlparse
 from sqlparse.sql import Token
-from sqlparse.tokens import Name, Number, Whitespace, Comment
+from sqlparse.tokens import Name, Number, Whitespace
 
 from sql_metadata.generalizator import Generalizator
 from sql_metadata.keywords_lists import (
@@ -30,8 +30,9 @@ class Parser:  # pylint: disable=R0902
     Main class to parse sql query
     """
 
-    def __init__(self, sql: str = "") -> None:
+    def __init__(self, sql: str = "", disable_logging: bool = False) -> None:
         self._logger = logging.getLogger(self.__class__.__name__)
+        self._logger.disabled = disable_logging
 
         self._raw_query = sql
         self._query = self._preprocess_query()
@@ -66,6 +67,7 @@ class Parser:  # pylint: disable=R0902
         self._nested_level = 0
         self._parenthesis_level = 0
         self._open_parentheses: List[SQLToken] = []
+        self._preceded_keywords: List[SQLToken] = []
         self._aliases_to_check = None
         self._is_in_nested_function = False
         self._is_in_with_block = False
@@ -123,7 +125,7 @@ class Parser:  # pylint: disable=R0902
         return self._query_type
 
     @property
-    def tokens(self) -> List[SQLToken]:
+    def tokens(self) -> List[SQLToken]:  # noqa: C901
         """
         Tokenizes the query
         """
@@ -135,31 +137,19 @@ class Parser:  # pylint: disable=R0902
         # handle empty queries (#12)
         if not parsed:
             return tokens
-        all_tokens = self._get_sqlparse_tokens(parsed)
+        self._get_sqlparse_tokens(parsed)
         last_keyword = None
         combine_flag = False
-        char_index = 0
-        index = 0
-        for tok in all_tokens:
-            if (
-                tok.ttype is Whitespace
-                or tok.ttype.parent is Whitespace
-                or tok.ttype is Comment
-                or tok.ttype.parent is Comment
-            ):
-                char_index += len(tok.value)
-                continue
+        for index, tok in enumerate(self.non_empty_tokens):
             # combine dot separated identifiers
             if self._is_token_part_of_complex_identifier(token=tok, index=index):
                 combine_flag = True
-                index += 1
                 continue
             token = SQLToken(
                 tok=tok,
                 index=index,
                 subquery_level=self._subquery_level,
                 last_keyword=last_keyword,
-                char_index=char_index,
             )
             if combine_flag:
                 self._combine_qualified_names(index=index, token=token)
@@ -175,6 +165,8 @@ class Parser:  # pylint: disable=R0902
             elif token.is_right_parenthesis:
                 token.token_type = TokenType.PARENTHESIS
                 self._determine_closing_parenthesis_type(token=token)
+                if token.is_subquery_end:
+                    last_keyword = self._preceded_keywords.pop()
 
             last_keyword = self._determine_last_relevant_keyword(
                 token=token, last_keyword=last_keyword
@@ -182,8 +174,6 @@ class Parser:  # pylint: disable=R0902
             token.is_in_nested_function = self._is_in_nested_function
             token.parenthesis_level = self._parenthesis_level
             tokens.append(token)
-            char_index += len(token.raw_value)
-            index += 1
 
         self._tokens = tokens
         # since tokens are used in all methods required parsing (so w/o generalization)
@@ -370,6 +360,14 @@ class Parser:  # pylint: disable=R0902
                     )
                 ):
                     continue
+
+                # handle INSERT INTO ON DUPLICATE KEY UPDATE queries
+                if (
+                    token.last_keyword_normalized == "UPDATE"
+                    and self.query_type == "INSERT"
+                ):
+                    continue
+
                 table_name = str(token.value.strip("`"))
                 token.token_type = TokenType.TABLE
                 tables.append(table_name)
@@ -395,8 +393,12 @@ class Parser:  # pylint: disable=R0902
                 elif token.last_keyword_normalized == "OFFSET":
                     # OFFSET <offset>
                     offset = int(token.value)
-                elif token.previous_token.is_punctuation:
+                elif (
+                    token.previous_token.is_punctuation
+                    and token.last_keyword_normalized == "LIMIT"
+                ):
                     # LIMIT <offset>,<limit>
+                    #  enter this condition only when the limit has already been parsed
                     offset = limit
                     limit = int(token.value)
 
@@ -857,6 +859,7 @@ class Parser:  # pylint: disable=R0902
             # inside subquery / derived table
             token.is_subquery_start = True
             self._subquery_level += 1
+            self._preceded_keywords.append(token.last_keyword_normalized)
             token.subquery_level = self._subquery_level
         elif token.previous_token.normalized in KEYWORDS_BEFORE_COLUMNS.union({","}):
             # we are in columns and in a column subquery definition
@@ -971,6 +974,8 @@ class Parser:  # pylint: disable=R0902
         return query
 
     def _determine_last_relevant_keyword(self, token: SQLToken, last_keyword: str):
+        if token.value == "," and token.last_keyword_normalized == "ON":
+            return "FROM"
         if token.is_keyword and "".join(token.normalized.split()) in RELEVANT_KEYWORDS:
             if (
                 not (
@@ -1004,46 +1009,34 @@ class Parser:  # pylint: disable=R0902
         Combines names like <schema>.<table>.<column> or <table/sub_query>.<column>
         """
         value = token.value
-        raw_value = token.raw_value
         is_complex = True
         while is_complex:
-            value, raw_value, is_complex = self._combine_tokens(
-                index=index, value=value, raw_value=raw_value
-            )
+            value, is_complex = self._combine_tokens(index=index, value=value)
             index = index - 2
         token.value = value
-        token.raw_value = raw_value
 
-    def _combine_tokens(
-        self, index: int, value: str, raw_value: str
-    ) -> Tuple[str, str, bool]:
+    def _combine_tokens(self, index: int, value: str) -> Tuple[str, bool]:
         """
         Checks if complex identifier is longer and follows back until it's finished
         """
         if index > 1 and str(self.non_empty_tokens[index - 1]) == ".":
-            prev_raw_value = self.non_empty_tokens[index - 2].value
-            prev_value = prev_raw_value.strip("`").strip('"')
+            prev_value = self.non_empty_tokens[index - 2].value.strip("`").strip('"')
             value = f"{prev_value}.{value}"
-            raw_value = f"{prev_raw_value}.{raw_value}"
-            return value, raw_value, True
-        return value, raw_value, False
+            return value, True
+        return value, False
 
-    def _get_sqlparse_tokens(self, parsed):
+    def _get_sqlparse_tokens(self, parsed) -> None:
         """
         Flattens the tokens and removes whitespace/comments
         """
         self.sqlparse_tokens = parsed[0].tokens
-        sqlparse_tokens = list(self._flatten_sqlparse())
+        sqlparse_tokens = self._flatten_sqlparse()
         self.non_empty_tokens = [
             token
             for token in sqlparse_tokens
-            if token.ttype is not Whitespace
-            and token.ttype.parent is not Whitespace
-            and token.ttype is not Comment
-            and token.ttype.parent is not Comment
+            if token.ttype is not Whitespace and token.ttype.parent is not Whitespace
         ]
         self.tokens_length = len(self.non_empty_tokens)
-        return sqlparse_tokens
 
     def _flatten_sqlparse(self):
         for token in self.sqlparse_tokens:

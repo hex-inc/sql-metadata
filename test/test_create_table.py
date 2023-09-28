@@ -165,6 +165,7 @@ def test_create_if_not_exists_simple_name():
     assert parser.tables == ["analytics_table"]
     assert parser.columns == ["version", "created_date"]
 
+
 def test_create_or_replace_table_simple():
     qry = """
     CREATE OR REPLACE TABLE analytics_table (code INTEGER NOT NULL)
@@ -173,6 +174,7 @@ def test_create_or_replace_table_simple():
     assert parser.query_type == QueryType.CREATE
     assert parser.columns == ["code"]
     assert parser.tables == ["analytics_table"]
+
 
 def test_create_or_replace_with_select():
     qry = """
