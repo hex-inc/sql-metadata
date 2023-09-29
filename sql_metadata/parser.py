@@ -1085,6 +1085,7 @@ class Parser:  # pylint: disable=R0902
                     value=f"{token.tokens[0].normalized}"
                     f"{token.tokens[1].tokens[0].normalized}",
                     ttype=token.tokens[1].tokens[0].ttype,
+                    position=token.tokens[0].position,
                 )
                 new_tok.parent = token.parent
                 yield new_tok
