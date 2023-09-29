@@ -31,8 +31,7 @@ class SQLToken:  # pylint: disable=R0902, R0904
             self._set_default_values()
         else:
             self.value = tok.value.strip("`").strip('"')
-            self.source_position = tok.position
-            self.source_length = tok.length
+            self.source_locations = [(tok.position, tok.position + tok.length)]
             self.is_keyword = tok.is_keyword or (
                 tok.ttype.parent is Name and tok.ttype is not Name
             )
@@ -57,8 +56,7 @@ class SQLToken:  # pylint: disable=R0902, R0904
 
     def _set_default_values(self):
         self.value = ""
-        self.source_position = None
-        self.source_length = None
+        self.source_locations = []
         self.is_keyword = False
         self.is_name = False
         self.is_punctuation = False

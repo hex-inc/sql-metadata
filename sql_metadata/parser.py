@@ -8,7 +8,7 @@ from typing import Dict, List, Optional, Set, Tuple, Union
 
 import sqlparse
 from sqlparse.sql import Token
-from sqlparse.tokens import Name, Number, Whitespace
+from sqlparse.tokens import Comment, Name, Number, Whitespace
 
 from sql_metadata.generalizator import Generalizator
 from sql_metadata.keywords_lists import (
@@ -30,7 +30,13 @@ class Parser:  # pylint: disable=R0902
     Main class to parse sql query
     """
 
-    def __init__(self, sql: str = "", disable_logging: bool = False) -> None:
+    def __init__(
+        self,
+        sql: str = "",
+        disable_logging: bool = False,
+        filter_comments: bool = False,
+    ) -> None:
+        self.filter_comments = filter_comments
         self._logger = logging.getLogger(self.__class__.__name__)
         self._logger.disabled = disable_logging
 
@@ -1021,9 +1027,23 @@ class Parser:  # pylint: disable=R0902
             prev_token = self.non_empty_tokens[index - 2]
             prev_value = prev_token.value.strip("`").strip('"')
             token.value = f"{prev_value}.{token.value}"
-            # note: prev_token is a sqlparse Token, not a SQLToken
-            token.source_position = prev_token.position
-            token.source_length += prev_token.length + 1
+
+            def combine_source_locations(tok: Token):
+                tok_range = (tok.position, tok.position + tok.length)
+                if token.source_locations[0][0] == tok_range[1]:
+                    # tokens are touching, extend the range
+                    token.source_locations[0] = (
+                        tok_range[0],
+                        token.source_locations[0][1],
+                    )
+                else:
+                    token.source_locations.insert(0, tok_range)
+
+            # complex identifiers are a single SQLToken but can correspond to
+            # multiple sqlparse Tokens with disjoint locations
+            combine_source_locations(self.non_empty_tokens[index - 1])  # the dot
+            combine_source_locations(prev_token)
+
             return True
         return False
 
@@ -1036,7 +1056,12 @@ class Parser:  # pylint: disable=R0902
         self.non_empty_tokens = [
             token
             for token in sqlparse_tokens
-            if token.ttype is not Whitespace and token.ttype.parent is not Whitespace
+            if token.ttype is not Whitespace
+            and token.ttype.parent is not Whitespace
+            and (
+                not self.filter_comments
+                or (token.ttype is not Comment and token.ttype.parent is not Comment)
+            )
         ]
         self.tokens_length = len(self.non_empty_tokens)
 
