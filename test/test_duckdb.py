@@ -12,6 +12,7 @@ SELECT *
     parser = Parser(source)
     assert ["monthly_sales"] == parser.tables
 
+
 def test_table_named_pivot():
     parser = Parser("from pivot")
     assert parser.tables == ["pivot"]
@@ -19,6 +20,7 @@ def test_table_named_pivot():
     parser = Parser("select * from pivot join other using (id)")
     assert "pivot" in parser.tables and "other" in parser.tables
     assert parser.query_type == "SELECT"
+
 
 def test_from_first():
     parser = Parser("from dataframe")

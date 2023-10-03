@@ -341,21 +341,25 @@ class SQLToken:  # pylint: disable=R0902, R0904
 
     @property
     def is_pivot_operator(self) -> bool:
+        """
+        Checks if token is the start of a pivot operator
+        """
         if self.normalized in {"PIVOT", "UNPIVOT"}:
             next_token = self.next_token_not_comment
             return next_token is not None and next_token.is_left_parenthesis
-        else:
-            return False
+        return False
 
     @property
     def last_keyword_pivot_operator(self) -> bool:
+        """
+        Checks if last_keyword is pivot/unpivot but is a pivot operator
+        """
         if self.last_keyword_normalized in {"PIVOT", "UNPIVOT"}:
             last_keyword_token = self.find_nearest_token(self.last_keyword)
             return (
                 last_keyword_token is not None and last_keyword_token.is_pivot_operator
             )
-        else:
-            return False
+        return False
 
     @property
     def is_potential_alias(self) -> bool:
