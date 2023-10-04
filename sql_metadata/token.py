@@ -264,6 +264,7 @@ class SQLToken:  # pylint: disable=R0902, R0904
             and self.last_keyword_normalized in TABLE_ADJUSTMENT_KEYWORDS
             and self.previous_token.normalized not in ["AS", "WITH"]
             and self.normalized not in ["AS", "SELECT", "IF", "SET", "WITH"]
+            and not self.last_keyword_pivot_operator
         )
 
     @property
@@ -337,6 +338,28 @@ class SQLToken:  # pylint: disable=R0902, R0904
             self.last_keyword_normalized == "INTO"
             and self.previous_token.is_punctuation
         )
+
+    @property
+    def is_pivot_operator(self) -> bool:
+        """
+        Checks if token is the start of a pivot operator
+        """
+        if self.normalized in {"PIVOT", "UNPIVOT"}:
+            next_token = self.next_token_not_comment
+            return next_token is not None and next_token.is_left_parenthesis
+        return False
+
+    @property
+    def last_keyword_pivot_operator(self) -> bool:
+        """
+        Checks if last_keyword is pivot/unpivot but is a pivot operator
+        """
+        if self.last_keyword_normalized in {"PIVOT", "UNPIVOT"}:
+            last_keyword_token = self.find_nearest_token(self.last_keyword)
+            return (
+                last_keyword_token is not None and last_keyword_token.is_pivot_operator
+            )
+        return False
 
     @property
     def is_potential_alias(self) -> bool:

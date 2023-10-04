@@ -31,6 +31,9 @@ TABLE_ADJUSTMENT_KEYWORDS = {
     "INTO",
     "UPDATE",
     "TABLE",
+    "PIVOT",
+    "PIVOT_WIDER",
+    "UNPIVOT",
 }
 
 # next statement beginning after with statement
@@ -105,6 +108,12 @@ SUPPORTED_QUERY_TYPES = {
     "CREATEORREPLACETABLE": QueryType.CREATE,
     "ALTERTABLE": QueryType.ALTER,
     "DROPTABLE": QueryType.DROP,
+    # duckdb FROM-first syntax
+    "FROM": QueryType.SELECT,
+    # duckdb PIVOT/UNPIVOT statements
+    "PIVOT": QueryType.SELECT,
+    "PIVOT_WIDER": QueryType.SELECT,
+    "UNPIVOT": QueryType.SELECT,
 }
 
 # all the keywords we care for - rest is ignored in assigning
