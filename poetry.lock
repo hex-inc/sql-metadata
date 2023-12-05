@@ -640,8 +640,8 @@ tox = ["tox (<4.5.0)", "virtualenv (<20.22.0)"]
 [package.source]
 type = "git"
 url = "https://github.com/hex-inc/sqlparse"
-reference = "ff5e88dfd3289572a2caed731c9312a7cfe066c2"
-resolved_reference = "ff5e88dfd3289572a2caed731c9312a7cfe066c2"
+reference = "c2ca20fdfb927b8d470da7d6c9e1b211da878eca"
+resolved_reference = "c2ca20fdfb927b8d470da7d6c9e1b211da878eca"
 
 [[package]]
 name = "tomli"
@@ -784,4 +784,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "e0dbf6bb4dc2fe8d152444b70d9c9d2ba4fd0a21672c03dc733781195f5af8d2"
+content-hash = "5fcc1f234b6594bf58718eb3e6d58abd60d0b36bfbc8099d9477374301658a38"
