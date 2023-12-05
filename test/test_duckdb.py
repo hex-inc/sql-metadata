@@ -150,9 +150,9 @@ def test_all_join_types(join_type):
 
 
 def test_mega_join():
-    dataframes = [f"dataframe_{i}" for i in range(len(ALL_JOIN_TYPES))]
+    dataframes = [f"dataframe_{i}" for i in range(len(ALL_JOIN_TYPES) + 1)]
     query = "select * from dataframe_0\n"
-    for join_type, dataframe in zip(ALL_JOIN_TYPES, dataframes):
+    for join_type, dataframe in zip(ALL_JOIN_TYPES, dataframes[1:]):
         query += f"{join_type} {dataframe}\n"
     parser = Parser(query)
     for dataframe in dataframes:
