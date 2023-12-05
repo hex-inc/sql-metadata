@@ -120,3 +120,16 @@ FROM (
     assert "monthly_sales" in parser.tables
     assert "unpivot_alias" not in parser.tables
     assert parser.query_type == "SELECT"
+
+
+def test_natural_join():
+    parser = Parser(
+        """
+select * from
+    dataframe_1
+natural join dataframe_2
+"""
+    )
+    assert "dataframe_1" in parser.tables
+    assert "dataframe_2" in parser.tables
+    assert parser.query_type == "SELECT"
