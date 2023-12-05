@@ -5,6 +5,7 @@ checks for tables an columns
 
 # these keywords are followed by columns reference
 from enum import Enum
+from sqlparse import joins
 
 KEYWORDS_BEFORE_COLUMNS = {
     "SELECT",
@@ -16,24 +17,18 @@ KEYWORDS_BEFORE_COLUMNS = {
     "USING",
 }
 
+JOIN_TYPES = {"".join(type) for type in joins.enumerate_types()}
+
 # normalized list of table preceding keywords
 TABLE_ADJUSTMENT_KEYWORDS = {
     "FROM",
-    "JOIN",
-    "CROSSJOIN",
-    "INNERJOIN",
-    "FULLJOIN",
-    "FULLOUTERJOIN",
-    "LEFTJOIN",
-    "RIGHTJOIN",
-    "LEFTOUTERJOIN",
-    "RIGHTOUTERJOIN",
     "INTO",
     "UPDATE",
     "TABLE",
     "PIVOT",
     "PIVOT_WIDER",
     "UNPIVOT",
+    *JOIN_TYPES,
 }
 
 # next statement beginning after with statement
@@ -42,15 +37,7 @@ WITH_ENDING_KEYWORDS = {"UPDATE", "SELECT", "DELETE", "REPLACE", "INSERT"}
 # subquery preceding keywords
 SUBQUERY_PRECEDING_KEYWORDS = {
     "FROM",
-    "JOIN",
-    "CROSSJOIN",
-    "INNERJOIN",
-    "FULLJOIN",
-    "FULLOUTERJOIN",
-    "LEFTJOIN",
-    "RIGHTJOIN",
-    "LEFTOUTERJOIN",
-    "RIGHTOUTERJOIN",
+    *JOIN_TYPES,
 }
 
 # section of a query in which column can exists

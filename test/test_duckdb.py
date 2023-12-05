@@ -1,3 +1,6 @@
+import pytest
+
+from sqlparse import joins
 from sql_metadata import Parser
 
 
@@ -119,4 +122,39 @@ FROM (
     )
     assert "monthly_sales" in parser.tables
     assert "unpivot_alias" not in parser.tables
+    assert parser.query_type == "SELECT"
+
+
+def test_natural_join():
+    parser = Parser(
+        """
+select * from
+    dataframe_1
+natural join dataframe_2
+"""
+    )
+    assert "dataframe_1" in parser.tables
+    assert "dataframe_2" in parser.tables
+    assert parser.query_type == "SELECT"
+
+
+ALL_JOIN_TYPES = [" ".join(type).lower() for type in joins.enumerate_types()]
+
+
+@pytest.mark.parametrize("join_type", ALL_JOIN_TYPES)
+def test_all_join_types(join_type):
+    parser = Parser(f"select * from dataframe_1 {join_type} dataframe_2")
+    assert "dataframe_1" in parser.tables
+    assert "dataframe_2" in parser.tables
+    assert parser.query_type == "SELECT"
+
+
+def test_mega_join():
+    dataframes = [f"dataframe_{i}" for i in range(len(ALL_JOIN_TYPES) + 1)]
+    query = "select * from dataframe_0\n"
+    for join_type, dataframe in zip(ALL_JOIN_TYPES, dataframes[1:]):
+        query += f"{join_type} {dataframe}\n"
+    parser = Parser(query)
+    for dataframe in dataframes:
+        assert dataframe in parser.tables
     assert parser.query_type == "SELECT"
