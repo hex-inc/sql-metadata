@@ -138,19 +138,23 @@ natural join dataframe_2
     assert parser.query_type == "SELECT"
 
 
-@pytest.mark.parametrize("type", [" ".join(type) for type in joins.enumerate_types()])
+ALL_JOIN_TYPES = ["STRAIGHT_JOIN"] + [
+    " ".join([*type, "JOIN"]) for type in joins.enumerate_types()
+]
+
+
+@pytest.mark.parametrize("type", ALL_JOIN_TYPES)
 def test_all_join_types(type):
-    parser = Parser(f"select * from dataframe_1 {type.lower()} join dataframe_2")
+    parser = Parser(f"select * from dataframe_1 {type.lower()} dataframe_2")
     assert "dataframe_1" in parser.tables
     assert "dataframe_2" in parser.tables
     assert parser.query_type == "SELECT"
 
 
 def test_mega_join():
-    join_types = [" ".join([*type, "JOIN"]).lower() for type in joins.enumerate_types()]
-    dataframes = [f"dataframe_{i}" for i in range(len(join_types))]
+    dataframes = [f"dataframe_{i}" for i in range(len(ALL_JOIN_TYPES))]
     query = f"select * from dataframe_0\n"
-    for join_type, dataframe in zip(join_types, dataframes):
+    for join_type, dataframe in zip(ALL_JOIN_TYPES, dataframes):
         query += f"{join_type} {dataframe}\n"
     parser = Parser(query)
     for dataframe in dataframes:

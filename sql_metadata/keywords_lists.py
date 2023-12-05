@@ -17,7 +17,9 @@ KEYWORDS_BEFORE_COLUMNS = {
     "USING",
 }
 
-JOIN_TYPES = {"".join([*type, "JOIN"]) for type in joins.enumerate_types()}
+JOIN_TYPES = {"STRAIGHT_JOIN"} | {
+    "".join([*type, "JOIN"]) for type in joins.enumerate_types()
+}
 
 # normalized list of table preceding keywords
 TABLE_ADJUSTMENT_KEYWORDS = {
