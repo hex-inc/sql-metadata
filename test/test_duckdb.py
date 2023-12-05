@@ -1,3 +1,6 @@
+import pytest
+
+from sqlparse import joins
 from sql_metadata import Parser
 
 
@@ -130,6 +133,14 @@ select * from
 natural join dataframe_2
 """
     )
+    assert "dataframe_1" in parser.tables
+    assert "dataframe_2" in parser.tables
+    assert parser.query_type == "SELECT"
+
+
+@pytest.mark.parametrize("type", [" ".join(type) for type in joins.enumerate_types()])
+def test_all_join_types(type):
+    parser = Parser(f"select * from dataframe_1 {type.lower()} join dataframe_2")
     assert "dataframe_1" in parser.tables
     assert "dataframe_2" in parser.tables
     assert parser.query_type == "SELECT"
