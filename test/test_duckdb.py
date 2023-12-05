@@ -144,3 +144,15 @@ def test_all_join_types(type):
     assert "dataframe_1" in parser.tables
     assert "dataframe_2" in parser.tables
     assert parser.query_type == "SELECT"
+
+
+def test_mega_join():
+    join_types = [" ".join([*type, "JOIN"]).lower() for type in joins.enumerate_types()]
+    dataframes = [f"dataframe_{i}" for i in range(len(join_types))]
+    query = f"select * from dataframe_0\n"
+    for join_type, dataframe in zip(join_types, dataframes):
+        query += f"{join_type} {dataframe}\n"
+    parser = Parser(query)
+    for dataframe in dataframes:
+        assert dataframe in parser.tables
+    assert parser.query_type == "SELECT"
