@@ -15,7 +15,7 @@ packages = [
 [tool.poetry.dependencies]
 python = "^3.8"
 # sqlparse = { path = "../sqlparse", develop = true }
-sqlparse = { git = "https://github.com/hex-inc/sqlparse", rev = "f7d5482a681f43721191d2c2b0e1717671c41fa7" }
+sqlparse = { git = "https://github.com/hex-inc/sqlparse", rev = "67aa88429b68718a43c00231c37510f156bc9ab3" }
 
 [tool.poetry.dev-dependencies]
 black = "^23.9"
