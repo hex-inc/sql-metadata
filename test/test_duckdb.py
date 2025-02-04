@@ -158,3 +158,15 @@ def test_mega_join():
     for dataframe in dataframes:
         assert dataframe in parser.tables
     assert parser.query_type == "SELECT"
+
+
+def test_timestamp_with_time_zone():
+    parser = Parser(
+        """
+SELECT *,
+CAST(ORDER_DATE as TIMESTAMP WITH TIME ZONE) as ingested_at
+FROM dataframe
+        """
+    )
+    assert "dataframe" in parser.tables
+    assert parser.query_type == "SELECT"
