@@ -48,10 +48,10 @@ def test_drop_table_query():
             assert "DROP TABLE" == Parser(query.format(comment)).query_type
 
 
-def test_unsupported_query():
+def test_unsupported_query(caplog):
     queries = [
-        "FOO BAR",
-        "DO SOMETHING",
+        "FOO BAR LONG QUERY WITH MANY TOKENS",
+        "DO SOMETHING LONG QUERY",
     ]
 
     for query in queries:
@@ -59,6 +59,15 @@ def test_unsupported_query():
             _ = Parser(query).query_type
 
         assert "Not supported query type!" in str(ex.value)
+
+        # assert the SQL query is not logged
+        # https://docs.pytest.org/en/stable/how-to/logging.html#caplog-fixture
+        assert (
+            f"Not supported query type: {query}" not in caplog.text
+        ), "The SQL query should not be logged"
+        assert (
+            f"Not supported query type: {query[:8]}" in caplog.text
+        ), "The SQL query should be trimmed when logged"
 
 
 def test_empty_query():
@@ -90,6 +99,25 @@ def test_multiple_redundant_parentheses():
 def test_multiple_redundant_parentheses_create():
     query = """
     ((create table aa (ac int primary key)))
+    """
+    parser = Parser(query)
+    assert parser.query_type == QueryType.CREATE
+
+
+def test_hive_create_function():
+    query = """
+        CREATE FUNCTION simple_udf AS 'com.example.hive.udf.SimpleUDF' 
+        USING JAR 'hdfs:///user/hive/udfs/simple-udf.jar'
+        WITH SERDEPROPERTIES (
+          "hive.udf.param1"="value1",
+          "hive.udf.param2"="value2"
+        );
+    """
+    parser = Parser(query)
+    assert parser.query_type == QueryType.CREATE
+
+    query = """
+        CREATE TEMPORARY FUNCTION myudf AS 'com.udf.myudf';
     """
     parser = Parser(query)
     assert parser.query_type == QueryType.CREATE

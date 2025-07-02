@@ -10,6 +10,7 @@ from sqlparse import joins
 KEYWORDS_BEFORE_COLUMNS = {
     "SELECT",
     "WHERE",
+    "HAVING",
     "ORDERBY",
     "GROUPBY",
     "ON",
@@ -45,6 +46,7 @@ SUBQUERY_PRECEDING_KEYWORDS = {
 COLUMNS_SECTIONS = {
     "SELECT": "select",
     "WHERE": "where",
+    "HAVING": "having",
     "ORDERBY": "order_by",
     "ON": "join",
     "USING": "join",
@@ -67,6 +69,7 @@ class QueryType(str, Enum):
     CREATE = "CREATE TABLE"
     ALTER = "ALTER TABLE"
     DROP = "DROP TABLE"
+    TRUNCATE = "TRUNCATE TABLE"
 
 
 class TokenType(str, Enum):
@@ -101,6 +104,8 @@ SUPPORTED_QUERY_TYPES = {
     "PIVOT": QueryType.SELECT,
     "PIVOT_WIDER": QueryType.SELECT,
     "UNPIVOT": QueryType.SELECT,
+    "CREATEFUNCTION": QueryType.CREATE,
+    "TRUNCATETABLE": QueryType.TRUNCATE,
 }
 
 # all the keywords we care for - rest is ignored in assigning
@@ -115,6 +120,7 @@ RELEVANT_KEYWORDS = {
     "RETURNING",
     "VALUES",
     "INDEX",
+    "KEY",
     "WITH",
     "WINDOW",
 }
