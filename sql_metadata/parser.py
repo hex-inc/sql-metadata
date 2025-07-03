@@ -120,13 +120,24 @@ class Parser:  # pylint: disable=R0902
             )
             .position
         )
-        if tokens[index].normalized in ["CREATE", "CREATEORREPLACE", "ALTER", "DROP"]:
+        if tokens[index].normalized == "CREATE":
+            switch = self._get_switch_by_create_query(tokens, index)
+        elif tokens[index].normalized in (
+            "ALTER",
+            "CREATEORREPLACE",
+            "DROP",
+            "TRUNCATE",
+        ):
             switch = tokens[index].normalized + tokens[index + 1].normalized
         else:
             switch = tokens[index].normalized
         self._query_type = SUPPORTED_QUERY_TYPES.get(switch, "UNSUPPORTED")
         if self._query_type == "UNSUPPORTED":
-            self._logger.error("Not supported query type: %s", self._raw_query)
+            # do not log the full query
+            # https://github.com/macbre/sql-metadata/issues/543
+            shorten_query = " ".join(self._raw_query.split(" ")[:3])
+
+            self._logger.error("Not supported query type: %s", shorten_query)
             raise ValueError("Not supported query type!")
         return self._query_type
 
@@ -138,7 +149,8 @@ class Parser:  # pylint: disable=R0902
         if self._tokens is not None:
             return self._tokens
 
-        parsed = sqlparse.parse(self._query)
+        # allow parser to be overriden
+        parsed = self._parse(self._query)
         tokens = []
         # handle empty queries (#12)
         if not parsed:
@@ -223,7 +235,7 @@ class Parser:  # pylint: disable=R0902
                     self._handle_column_save(token=token, columns=columns)
 
                 elif token.is_column_name_inside_insert_clause:
-                    column = str(token.value).strip("`")
+                    column = str(token.value)
                     self._add_to_columns_subsection(
                         keyword=token.last_keyword_normalized, column=column
                     )
@@ -373,10 +385,8 @@ class Parser:  # pylint: disable=R0902
                     and self.query_type == "INSERT"
                 ):
                     continue
-
-                table_name = str(token.value.strip("`"))
                 token.token_type = TokenType.TABLE
-                tables.append(table_name)
+                tables.append(str(token.value))
 
         self._tables = tables - with_names
         return self._tables
@@ -469,8 +479,8 @@ class Parser:  # pylint: disable=R0902
                         while token.next_token and not token.is_with_query_end:
                             token = token.next_token
                         is_end_of_with_block = (
-                            token.next_token_not_comment is not None
-                            and token.next_token_not_comment.normalized
+                            token.next_token_not_comment is None
+                            or token.next_token_not_comment.normalized
                             in WITH_ENDING_KEYWORDS
                         )
                         if is_end_of_with_block:
@@ -511,7 +521,7 @@ class Parser:  # pylint: disable=R0902
                 True, value_attribute="is_with_query_end", direction="right"
             )
             query_token = with_start.next_token
-            while query_token != with_end:
+            while query_token is not None and query_token != with_end:
                 current_with_query.append(query_token)
                 query_token = query_token.next_token
             with_query_text = "".join([x.stringified_token for x in current_with_query])
@@ -540,12 +550,16 @@ class Parser:  # pylint: disable=R0902
                 ):
                     current_subquery.append(inner_token)
                     inner_token = inner_token.next_token
+
+                query_name = None
                 if inner_token.next_token.value in self.subqueries_names:
                     query_name = inner_token.next_token.value
-                else:
+                elif inner_token.next_token.is_as_keyword:
                     query_name = inner_token.next_token.next_token.value
+
                 subquery_text = "".join([x.stringified_token for x in current_subquery])
-                subqueries[query_name] = subquery_text
+                if query_name is not None:
+                    subqueries[query_name] = subquery_text
 
             token = token.next_token
 
@@ -629,7 +643,7 @@ class Parser:  # pylint: disable=R0902
         """
         Removes comments from SQL query
         """
-        return Generalizator(self.query).without_comments
+        return Generalizator(self._raw_query).without_comments
 
     @property
     def generalize(self) -> str:
@@ -670,6 +684,10 @@ class Parser:  # pylint: disable=R0902
             token.is_with_columns_end = True
             token.is_nested_function_end = False
             start_token = token.find_nearest_token("(")
+            # like: with (col1, col2) as (subquery) as ..., it enters an infinite loop.
+            # return exception
+            if start_token.is_with_query_start:
+                raise ValueError("This query is wrong")
             start_token.is_with_columns_start = True
             start_token.is_nested_function_start = False
             prev_token = start_token.previous_token
@@ -805,7 +823,8 @@ class Parser:  # pylint: disable=R0902
         return column if isinstance(column, list) else [column]
 
     @staticmethod
-    def _resolve_nested_query(
+    # pylint:disable=too-many-return-statements
+    def _resolve_nested_query(  # noqa: C901
         subquery_alias: str,
         nested_queries_names: List[str],
         nested_queries: Dict,
@@ -841,6 +860,9 @@ class Parser:  # pylint: disable=R0902
             # handle case when column name is used but subquery select all by wildcard
             if "*" in subparser.columns:
                 return column_name
+            for table in subparser.tables:
+                if f"{table}.*" in subparser.columns:
+                    return column_name
             raise exc  # pragma: no cover
         resolved_column = subparser.columns[column_index]
         return [resolved_column]
@@ -872,7 +894,7 @@ class Parser:  # pylint: disable=R0902
             # we are in columns and in a column subquery definition
             token.is_column_definition_start = True
         elif (
-            token.previous_token.is_as_keyword
+            token.previous_token_not_comment.is_as_keyword
             and token.last_keyword_normalized != "WINDOW"
         ):
             # window clause also contains AS keyword, but it is not a query
@@ -1006,6 +1028,8 @@ class Parser:  # pylint: disable=R0902
         Checks if token is a part of complex identifier like
         <schema>.<table>.<column> or <table/sub_query>.<column>
         """
+        if token.is_keyword:
+            return False
         return str(token) == "." or (
             index + 1 < self.tokens_length
             and str(self.non_empty_tokens[index + 1]) == "."
@@ -1018,16 +1042,18 @@ class Parser:  # pylint: disable=R0902
         is_complex = True
         while is_complex:
             is_complex = self._combine_tokens(index=index, token=token)
-            index = index - 2
+            index = index - 1
 
     def _combine_tokens(self, index: int, token: SQLToken) -> bool:
         """
         Checks if complex identifier is longer and follows back until it's finished
         """
-        if index > 1 and str(self.non_empty_tokens[index - 1]) == ".":
-            prev_token = self.non_empty_tokens[index - 2]
+        if index > 1 and self._is_token_part_of_complex_identifier(
+            self.non_empty_tokens[index - 1], index - 1
+        ):
+            prev_token = self.non_empty_tokens[index - 1]
             prev_value = prev_token.value.strip("`").strip('"')
-            token.value = f"{prev_value}.{token.value}"
+            token.value = f"{prev_value}{token.value}"
 
             def combine_source_locations(tok: Token):
                 tok_range = (tok.position, tok.position + tok.length)
@@ -1042,7 +1068,6 @@ class Parser:  # pylint: disable=R0902
 
             # complex identifiers are a single SQLToken but can correspond to
             # multiple sqlparse Tokens with disjoint locations
-            combine_source_locations(self.non_empty_tokens[index - 1])  # the dot
             combine_source_locations(prev_token)
 
             return True
@@ -1100,3 +1125,26 @@ class Parser:  # pylint: disable=R0902
                             yield tok
             else:
                 yield token
+
+    @staticmethod
+    def _get_switch_by_create_query(tokens: List[SQLToken], index: int) -> str:
+        """
+        Return the switch that creates query type.
+        """
+        switch = tokens[index].normalized + tokens[index + 1].normalized
+
+        # Hive CREATE FUNCTION
+        if any(
+            index + i < len(tokens) and tokens[index + i].normalized == "FUNCTION"
+            for i in (1, 2)
+        ):
+            switch = "CREATEFUNCTION"
+
+        return switch
+
+    @staticmethod
+    def _parse(sql: str) -> Tuple[sqlparse.sql.Statement]:
+        """
+        Parse the SQL query using sqlparse library
+        """
+        return sqlparse.parse(sql)
