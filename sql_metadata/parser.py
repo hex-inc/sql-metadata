@@ -1042,16 +1042,18 @@ class Parser:  # pylint: disable=R0902
         is_complex = True
         while is_complex:
             is_complex = self._combine_tokens(index=index, token=token)
-            index = index - 2
+            index = index - 1
 
     def _combine_tokens(self, index: int, token: SQLToken) -> bool:
         """
         Checks if complex identifier is longer and follows back until it's finished
         """
-        if index > 1 and str(self.non_empty_tokens[index - 1]) == ".":
-            prev_token = self.non_empty_tokens[index - 2]
+        if index > 1 and self._is_token_part_of_complex_identifier(
+            self.non_empty_tokens[index - 1], index - 1
+        ):
+            prev_token = self.non_empty_tokens[index - 1]
             prev_value = prev_token.value.strip("`").strip('"')
-            token.value = f"{prev_value}.{token.value}"
+            token.value = f"{prev_value}{token.value}"
 
             def combine_source_locations(tok: Token):
                 tok_range = (tok.position, tok.position + tok.length)
@@ -1066,7 +1068,6 @@ class Parser:  # pylint: disable=R0902
 
             # complex identifiers are a single SQLToken but can correspond to
             # multiple sqlparse Tokens with disjoint locations
-            combine_source_locations(self.non_empty_tokens[index - 1])  # the dot
             combine_source_locations(prev_token)
 
             return True
