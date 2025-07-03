@@ -126,3 +126,9 @@ def test_case_syntax():
     assert Parser(
         "SELECT case when p > 0 then 1 else 0 end as cs from c where g > f"
     ).tables == ["c"]
+
+
+def test_join_with_iff_clause():
+    query = "SELECT * FROM a JOIN b ON IFF(a.count > 10, a.id, a.count) = b.id"
+    assert Parser(query).tables == ["a", "b"]
+    assert Parser(query).columns == ["*"]
