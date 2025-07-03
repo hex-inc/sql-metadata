@@ -1048,14 +1048,29 @@ class Parser:  # pylint: disable=R0902
         """
         Checks if complex identifier is longer and follows back until it's finished
         """
-        if index > 1:
-            prev_value = self.non_empty_tokens[index - 1]
-            if not self._is_token_part_of_complex_identifier(prev_value, index - 1):
-                return value, False
-            prev_value = str(prev_value).strip("`")
-            value = f"{prev_value}{value}"
-            return value, True
-        return value, False
+        if index > 1 and str(self.non_empty_tokens[index - 1]) == ".":
+            prev_token = self.non_empty_tokens[index - 2]
+            prev_value = prev_token.value.strip("`").strip('"')
+            token.value = f"{prev_value}.{token.value}"
+
+            def combine_source_locations(tok: Token):
+                tok_range = (tok.position, tok.position + tok.length)
+                if token.source_locations[0][0] == tok_range[1]:
+                    # tokens are touching, extend the range
+                    token.source_locations[0] = (
+                        tok_range[0],
+                        token.source_locations[0][1],
+                    )
+                else:
+                    token.source_locations.insert(0, tok_range)
+
+            # complex identifiers are a single SQLToken but can correspond to
+            # multiple sqlparse Tokens with disjoint locations
+            combine_source_locations(self.non_empty_tokens[index - 1])  # the dot
+            combine_source_locations(prev_token)
+
+            return True
+        return False
 
     def _get_sqlparse_tokens(self, parsed) -> None:
         """
