@@ -123,4 +123,5 @@ RELEVANT_KEYWORDS = {
     "KEY",
     "WITH",
     "WINDOW",
+    "IFF",
 }
