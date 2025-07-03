@@ -462,8 +462,8 @@ doc = ["sphinx"]
 [package.source]
 type = "git"
 url = "https://github.com/hex-inc/sqlparse"
-reference = "b4e275162e3706df4101b7ee15f11023190b387a"
-resolved_reference = "b4e275162e3706df4101b7ee15f11023190b387a"
+reference = "70344699b74779cb8b8177a698e9776996ede48c"
+resolved_reference = "70344699b74779cb8b8177a698e9776996ede48c"
 
 [[package]]
 name = "tomli"
@@ -536,4 +536,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.9"
-content-hash = "9a9d35a39d1d0daa11ae226fede7146a712e07a8930db7491df061a4f070ba67"
+content-hash = "8487eda55314e76838edfda18d67c7fdb8337d1221d887b4570471c631765e7b"
