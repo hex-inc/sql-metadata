@@ -447,19 +447,25 @@ testing = ["fields", "hunter", "process-tests", "pytest-xdist", "virtualenv"]
 
 [[package]]
 name = "sqlparse"
-version = "0.5.3"
+version = "0.5.0.dev0"
 description = "A non-validating SQL parser."
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.6"
 groups = ["main"]
-files = [
-    {file = "sqlparse-0.5.3-py3-none-any.whl", hash = "sha256:cf2196ed3418f3ba5de6af7e82c694a9fbdbfecccdfc72e281548517081f16ca"},
-    {file = "sqlparse-0.5.3.tar.gz", hash = "sha256:09f67787f56a0b16ecdbde1bfc7f5d9c3371ca683cfeaa8e6ff60b4807ec9272"},
-]
+files = []
+develop = false
 
 [package.extras]
-dev = ["build", "hatch"]
+dev = ["build", "flake8", "importlib_metadata (<5) ; python_version <= \"3.7\""]
 doc = ["sphinx"]
+test = ["pytest", "pytest-cov"]
+tox = ["tox (<4.5.0)", "virtualenv (<20.22.0)"]
+
+[package.source]
+type = "git"
+url = "https://github.com/hex-inc/sqlparse"
+reference = "c39a749974f991b956ec52bab952d04fac532842"
+resolved_reference = "c39a749974f991b956ec52bab952d04fac532842"
 
 [[package]]
 name = "tomli"
@@ -532,4 +538,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.9"
-content-hash = "8a7e9941d526c3ee93203873a23e11ce34dee1d115c1f00ed33b867901e77e1c"
+content-hash = "1643c1295670a53c9ffb55317bd3cb9006985a344eeb53317fd561ef9f64f186"
